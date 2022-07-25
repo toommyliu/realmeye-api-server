@@ -1,0 +1,40 @@
+{
+	"compilerOptions": {
+		/* Type checking */
+		"strict": true,
+		"alwaysStrict": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+
+		/* Modules */
+		"moduleResolution": "node",
+		"module": "ESNext",
+
+		/* Emit */
+		"removeComments": true,
+		"sourceMap": true,
+		"noEmitHelpers": true,
+		"importHelpers": true,
+		"importsNotUsedAsValues": "error",
+		"outDir": "./dist",
+
+		/* Interop constraints */
+		"esModuleInterop": true,
+
+		/* Language and Environment */
+		"lib": ["ESNext"],
+		"target": "ES2021",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+
+		/* Projects */
+		"incremental": true,
+
+		/* Output formatting */
+		"pretty": true,
+
+		/* Completeness */
+		"skipLibCheck": true
+	},
+	"include": ["./src/**/*.ts"]
+}
