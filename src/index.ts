@@ -11,6 +11,8 @@ import { logger } from './logger.js';
 import { logRequests } from './middleware/logRequests.js';
 import { sendBoom } from './util/sendBoom.js';
 
+const port = parseInt(process.env.PORT!, 10) || 3000;
+
 void (async () => {
 	const app = polka({
 		onError(e, _, res) {
@@ -48,5 +50,5 @@ void (async () => {
 		});
 	}
 
-	app.listen(3000, () => logger.info(`Api up on port 3000`));
+	app.listen(port, () => logger.info(`Api up on port ${port}`));
 })();
