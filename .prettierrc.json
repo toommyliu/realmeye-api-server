@@ -1,7 +1,5 @@
 {
 	"printWidth": 120,
 	"useTabs": true,
-	"singleQuote": true,
-	"quoteProps": "as-needed",
-	"endOfLine": "lf"
+	"singleQuote": true
 }
