@@ -1,6 +1,6 @@
-import type { Request, Response } from 'polka';
+import type { HTMLElement } from 'node-html-parser';
 
 export interface Route {
 	path: string;
-	handle: (req: Request, res: Response) => Promise<unknown>;
+	handle: (document: HTMLElement) => Promise<unknown>;
 }

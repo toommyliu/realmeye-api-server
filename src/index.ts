@@ -1,12 +1,12 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
 import { isBoom, Boom, notFound } from '@hapi/boom';
 import helmet from 'helmet';
+import { parse } from 'node-html-parser';
 import polka, { type Middleware } from 'polka';
 import readdirp from 'readdirp';
-
 import type { Route } from './Route.js';
+import { get } from './constants.js';
 import { logger } from './logger.js';
 import { logRequests } from './middleware/logRequests.js';
 import { sendBoom } from './util/sendBoom.js';
@@ -41,8 +41,12 @@ void (async () => {
 	for await (const routeFile of files) {
 		const route = (await import(routeFile.fullPath)) as Route;
 		app.get(route.path, async (req, res, next) => {
+			const _req = await get(req.path);
+			const document = parse(_req.data as string);
+
 			try {
-				await route.handle(req, res);
+				const json = await route.handle(document);
+				await res.end(json);
 			} catch (e) {
 				const err = e as Error;
 				void next(err);

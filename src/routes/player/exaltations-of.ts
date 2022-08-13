@@ -1,28 +1,24 @@
-import { parse } from 'node-html-parser';
-import type { Request, Response } from 'polka';
-import { Code, Message, get } from '../../constants.js';
+import type { HTMLElement } from 'node-html-parser';
+import { Code, Message } from '../../constants.js';
 import type { ClassExaltation } from '../../types/index.js';
 import { extractContainer, extractName } from '../../util/extract.js';
 import { sendResponse } from '../../util/sendResponse.js';
 
 export const path = '/exaltations-of/:name';
-export async function handle(req: Request, res: Response) {
-	const _req = await get(req.path);
-	const document = parse(_req.data as string);
-
+export function handle(document: HTMLElement) {
 	const container = extractContainer(document)!;
 	const name = extractName(container);
 
 	const h2 = container.querySelector('h2');
 	if (!name || h2?.rawText === 'Sorry, but we either:') {
-		return sendResponse(res, {}, Code.PlayerNotFound, Message.PlayerNotFound);
+		return sendResponse({}, Code.PlayerNotFound, Message.PlayerNotFound);
 	}
 
 	const h3 = container.querySelector('h3');
 	if (h3?.rawText === 'No exaltations') {
-		return sendResponse(res, {}, Code.PlayerDataMissing, Message.PlayerDataMissing);
+		return sendResponse({}, Code.PlayerDataMissing, Message.PlayerDataMissing);
 	} else if (h3?.rawText === 'Exaltations are hidden') {
-		return sendResponse(res, {}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+		return sendResponse({}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
 	}
 
 	const split = h3!.rawText.substring(13).split(' / ');
@@ -60,5 +56,5 @@ export async function handle(req: Request, res: Response) {
 		percentage,
 		exaltations,
 	};
-	return sendResponse(res, json);
+	return sendResponse(json);
 }
