@@ -16,7 +16,7 @@ export function handle(document: HTMLElement) {
 
 	const h3 = container.querySelector('h3');
 	if (h3?.text === 'Guild history is not available') {
-		return sendResponse({}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
 	}
 
 	const json: RealmeyePlayerGuildHistory = { name, guilds: [] };

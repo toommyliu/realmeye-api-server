@@ -64,6 +64,7 @@ export interface ClassExaltation {
 }
 
 export interface RealmeyePlayerGraveyardSummary {
+	name: string;
 	main_achievements: AchievementRow[];
 	other_achievements: AchievementRow[];
 	maxed_stats_by_class: MaxedStatsByClass[];

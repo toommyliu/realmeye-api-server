@@ -16,12 +16,12 @@ export function handle(document: HTMLElement) {
 
 	const h3 = container.getElementsByTagName('h3');
 	if (h3[h3.length - 1]?.rawText === 'Name history is not available') {
-		return sendResponse({}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
 	}
 
 	const p = container.getElementsByTagName('p')!;
 	if (p[p.length - 1]?.rawText === 'No name changes detected.') {
-		return sendResponse({}, Code.PlayerDataMissing, Message.PlayerDataMissing);
+		return sendResponse({ name }, Code.PlayerDataMissing, Message.PlayerDataMissing);
 	}
 
 	const json: RealmeyePlayerNameHistory = {

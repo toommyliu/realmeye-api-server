@@ -1,6 +1,6 @@
 import type { HTMLElement } from 'node-html-parser';
 import { Code, Message } from '../../constants.js';
-import type { AchievementRow, MaxedStatsByClass } from '../../types/index.js';
+import type { MaxedStatsByClass, RealmeyePlayerGraveyardSummary } from '../../types/index.js';
 import { extractContainer, extractName } from '../../util/extract.js';
 import { sendResponse } from '../../util/sendResponse.js';
 
@@ -16,21 +16,24 @@ export function handle(document: HTMLElement) {
 
 	const h3 = container.querySelector('h3');
 	if (h3?.rawText === 'No data available yet.') {
-		return sendResponse({}, Code.PlayerDataMissing, Message.PlayerDataMissing);
+		return sendResponse({ name }, Code.PlayerDataMissing, Message.PlayerDataMissing);
 	} else if (h3?.rawText.startsWith('The graveyard of')) {
-		return sendResponse({}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
 	}
 
-	const main_achievements: AchievementRow[] = [];
-	const other_achievements: AchievementRow[] = [];
-	const class_achievements: MaxedStatsByClass[] = [];
+	const json: RealmeyePlayerGraveyardSummary = {
+		name,
+		main_achievements: [],
+		maxed_stats_by_class: [],
+		other_achievements: [],
+	};
 
 	const mainAchievementRows = container.querySelector('.table-responsive .table.table-striped.main-achievements')!;
 	for (let i = 1; i < mainAchievementRows.childNodes.length; i++) {
 		const [, achievement, total, max, average, min] = mainAchievementRows.childNodes[i]!.childNodes.map(
 			(c) => c.rawText
 		)!;
-		main_achievements.push({
+		json.main_achievements.push({
 			achievement: achievement!.replace('&apos;s', "'s").replace(/[0-9]/g, ''),
 			total: total ? parseInt(total, 10) : 0,
 			max: max ? parseInt(max, 10) : 0,
@@ -45,7 +48,7 @@ export function handle(document: HTMLElement) {
 			(c) => c.rawText
 		)!;
 
-		other_achievements.push({
+		json.other_achievements.push({
 			achievement: achievement!.replace('&apos;s', "'s").replace(/[0-9]/g, ''),
 			total: total ? parseInt(total, 10) : 0,
 			max: max ? parseInt(max, 10) : 0,
@@ -103,8 +106,8 @@ export function handle(document: HTMLElement) {
 			total: 0,
 		};
 		class_achievement.total = class_achievement.stats.reduce((a, b) => b.count + a, 0);
-		class_achievements.push(class_achievement);
+		json.maxed_stats_by_class.push(class_achievement);
 	}
 
-	return sendResponse({ name, main_achievements, other_achievements, class_achievements });
+	return sendResponse(json);
 }

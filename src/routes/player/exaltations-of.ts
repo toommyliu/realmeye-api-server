@@ -16,9 +16,9 @@ export function handle(document: HTMLElement) {
 
 	const h3 = container.querySelector('h3');
 	if (h3?.rawText === 'No exaltations') {
-		return sendResponse({}, Code.PlayerDataMissing, Message.PlayerDataMissing);
+		return sendResponse({ name }, Code.PlayerDataMissing, Message.PlayerDataMissing);
 	} else if (h3?.rawText === 'Exaltations are hidden') {
-		return sendResponse({}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
 	}
 
 	const split = h3!.rawText.substring(13).split(' / ');

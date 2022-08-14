@@ -16,7 +16,7 @@ export function handle(document: HTMLElement) {
 
 	const h3 = container.getElementsByTagName('h3');
 	if (h3[h3.length - 1]?.rawText === 'Pets are hidden.') {
-		return sendResponse({}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
 	}
 
 	const json: RealmeyePlayerPetYard = { name, pets: [] };

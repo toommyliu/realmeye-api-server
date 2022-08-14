@@ -23,12 +23,12 @@ export function handle(document: HTMLElement) {
 
 	const h2 = container.querySelector('h2');
 	if (!name || h2?.text === 'Sorry, but we either:') {
-		return sendResponse({}, Code.PlayerNotFound, Message.PlayerNotFound);
+		return sendResponse({ }, Code.PlayerNotFound, Message.PlayerNotFound);
 	}
 
 	const h3 = container.querySelector('h3');
 	if (h3?.text === 'Characters are hidden') {
-		return sendResponse({}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
 	}
 
 	const json: Partial<RealmeyePlayer> = { name, description: [] };
