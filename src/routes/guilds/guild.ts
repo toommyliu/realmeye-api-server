@@ -16,10 +16,34 @@ export function handle(document: HTMLElement) {
 
 	const json: Partial<RealmeyeGuild> = { name, description: [], members: [] };
 
+	// #region summary
+	const summary = container.querySelector('.row .col-md-5 .summary');
+	for (let i = 0; i < summary!.childNodes.length; i++) {
+		const [col, val] = summary!.childNodes[i]!.childNodes.map((c) => c.rawText)!;
+		console.log(col, val);
+		switch (i) {
+			case 0:
+				json.member_count = parseInt(val!, 10) || 0;
+				break;
+			case 1:
+				json.character_count = parseInt(val!, 10) || 0;
+				break;
+			case 2:
+				json.fame = parseInt(val!.split(' ')[0]!, 10) || 0;
+				break;
+			case 3:
+				json.exp = parseInt(val!.split(' ')[0]!, 10) || 0;
+				break;
+			case 4:
+				json.most_active_on = val!.split(' ')[0]! || '';
+				break;
+		}
+	}
+	// #endregion
+
 	// #region description
 	const description = container.querySelectorAll('.col-md-7 .well.description');
 	for (const lines of description) json.description = lines.childNodes.map((c) => c.rawText);
-
 	// #endregion
 
 	const table = container.querySelectorAll('.table-responsive .table.table-striped.tablesorter tbody tr');

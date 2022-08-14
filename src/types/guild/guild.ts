@@ -16,6 +16,11 @@ export interface RealmeyeGuild {
 		avg_fame: number;
 		avg_exp: number;
 	}[];
+	member_count: number;
+	character_count: number;
+	fame: number;
+	exp: number;
+	most_active_on: string;
 }
 
 export interface RealmeyeGuildTopCharacters {
