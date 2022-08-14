@@ -38,3 +38,21 @@ export interface RealmeyeGuildTopCharacter {
 	last_seen: string;
 	server: string;
 }
+
+export interface RealmeyeGuildTopPets {
+	name: string;
+	pets: {
+		place: number;
+		name: string;
+		rarity: string;
+		family: string;
+		abilities: {
+			ability: string;
+			level: number;
+			maxed: boolean;
+			unlocked: boolean;
+		}[];
+		max_level: number;
+		owner: string;
+	}[];
+}
