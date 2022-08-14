@@ -1,3 +1,46 @@
+export interface RealmeyePlayer {
+	name: string;
+
+	description?: string[];
+
+	fame?: number;
+	exp?: number;
+	rank?: number;
+	guild?: string;
+	guild_rank?: string;
+	account_fame?: number;
+
+	created?: string;
+	first_seen?: string;
+	last_seen?: string;
+
+	character_count?: number;
+	skin_count?: number;
+	exaltation_count?: number;
+	pet_count?: number;
+	offer_count?: number;
+
+	characters?: RealmeyeCharacter[];
+}
+
+export interface RealmeyeCharacter {
+	class?: string;
+	level?: number;
+	class_quests_completed?: string;
+	fame?: number;
+	exp?: number;
+	place?: number;
+	equipment?: EquipmentSlot[];
+	last_seen?: string;
+	server?: string;
+	stats?: string;
+	skin?: {
+		skinId: number;
+		clothingDyeId: number;
+		accessoryDyeId: number;
+	};
+}
+
 export interface RealmeyePlayerExaltations {
 	current_exaltations?: number;
 	exaltations?: ClassExaltation[];
@@ -69,44 +112,6 @@ export interface RealmeyePlayerPetYard {
 		}[];
 		max_level: number;
 	}[];
-}
-
-export interface RealmeyePlayer {
-	name: string;
-
-	description?: string[];
-
-	fame?: number;
-	exp?: number;
-	rank?: number;
-	guild?: string;
-	guild_rank?: string;
-	account_fame?: number;
-
-	created?: string;
-	first_seen?: string;
-	last_seen?: string;
-
-	character_count?: number;
-	skin_count?: number;
-	exaltation_count?: number;
-	pet_count?: number;
-	offer_count?: number;
-
-	characters?: RealmeyeCharacter[];
-}
-
-export interface RealmeyeCharacter {
-	class?: string;
-	level?: number;
-	class_quests_completed?: string;
-	fame?: number;
-	exp?: number;
-	place?: number;
-	equipment?: EquipmentSlot[];
-	last_seen?: string;
-	server?: string;
-	stats?: string;
 }
 
 export interface EquipmentSlot {

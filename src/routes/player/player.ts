@@ -92,6 +92,8 @@ export function handle(document: HTMLElement) {
 	for (let i = 0; i < characterTable.length; i++) {
 		const char: RealmeyeCharacter = {};
 		const charRow: string[] = characterTable[i]!.childNodes.map((c) => c.rawText);
+		const skin = characterTable[i]?.querySelector('.character')?.rawAttributes as unknown as CharacterSkinAttributes;
+
 		charRow.splice(0, 2);
 
 		const [className, level, cqc, fame, exp, place, , stats, last_seen, , server] = charRow;
@@ -106,6 +108,11 @@ export function handle(document: HTMLElement) {
 		char.last_seen = last_seen;
 		char.server = server!;
 		char.equipment = [];
+		char.skin = {
+			accessoryDyeId: parseInt(skin['data-accessory-dye-id'], 10) || 0,
+			clothingDyeId: parseInt(skin['data-clothing-dye-id'], 10) || 0,
+			skinId: parseInt(skin['data-skin'], 10) || 0,
+		};
 
 		const equips = characterTable[i]!.querySelectorAll('.item-wrapper .item').map((c) => c.getAttribute('title'));
 		for (let i = 0; i < equips.length; i++) {
@@ -127,4 +134,18 @@ export function handle(document: HTMLElement) {
 
 	// #endregion
 	return sendResponse(json);
+}
+
+interface CharacterSkinAttributes {
+	id: string;
+	class: string;
+	href: string;
+	style: string;
+	'data-class': string;
+	'data-skin': string;
+	'data-dye1': string;
+	'data-dye2': string;
+	'data-accessory-dye-id': string;
+	'data-clothing-dye-id': string;
+	'data-count': string;
 }
