@@ -137,3 +137,13 @@ export interface RealmeyePlayerGuildHistory {
 		to: string;
 	}[];
 }
+
+export interface RealmeyePlayerRankHistory {
+	name: string;
+	ranks: {
+		rank: number;
+		star: string;
+		achieved: string;
+		date: string;
+	}[];
+}
