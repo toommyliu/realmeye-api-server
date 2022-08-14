@@ -19,8 +19,7 @@ export function handle(document: HTMLElement) {
 	// #region summary
 	const summary = container.querySelector('.row .col-md-5 .summary');
 	for (let i = 0; i < summary!.childNodes.length; i++) {
-		const [col, val] = summary!.childNodes[i]!.childNodes.map((c) => c.rawText)!;
-		console.log(col, val);
+		const [, val] = summary!.childNodes[i]!.childNodes.map((c) => c.rawText)!;
 		switch (i) {
 			case 0:
 				json.member_count = parseInt(val!, 10) || 0;
@@ -43,7 +42,11 @@ export function handle(document: HTMLElement) {
 
 	// #region description
 	const description = container.querySelectorAll('.col-md-7 .well.description');
-	for (const lines of description) json.description = lines.childNodes.map((c) => c.rawText);
+	for (const lines of description) {
+		// @ts-expect-error
+		if (lines.firstChild.rawAttrs === 'class="help"') break;
+		json.description = lines.childNodes.map((c) => c.rawText);
+	}
 	// #endregion
 
 	const table = container.querySelectorAll('.table-responsive .table.table-striped.tablesorter tbody tr');
