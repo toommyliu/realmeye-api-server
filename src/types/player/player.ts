@@ -127,3 +127,13 @@ export const enum EquipmentSlotType {
 	Ring,
 	Backpack,
 }
+
+export interface RealmeyePlayerGuildHistory {
+	name: string;
+	guilds: {
+		guild: string;
+		rank: string;
+		from: string;
+		to: string;
+	}[];
+}
