@@ -18,10 +18,14 @@ export const enum Code {
 	PlayerNotFound = 'player_not_found',
 	PlayerDataMissing = 'player_data_missing',
 	PlayerDataUnavailable = 'player_data_unavailable',
+
+	GuildNotFound = 'guild_not_found',
 }
 
 export const enum Message {
 	PlayerNotFound = 'The requested player could not be found.',
 	PlayerDataMissing = 'The requested player data for this resource is missing.',
 	PlayerDataUnavailable = 'The requested player data for this resource is unavailable.',
+
+	GuildNotFound = 'The requested guild could not be found.',
 }
