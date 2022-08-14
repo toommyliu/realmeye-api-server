@@ -27,6 +27,6 @@ export function handle(document: HTMLElement) {
 		const [guild = '', rank = '', from = '', to = ''] = td;
 		json.guilds.push({ guild, rank, from, to });
 	}
-	
+
 	return sendResponse(json);
 }
