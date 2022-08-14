@@ -14,14 +14,21 @@ export function handle(document: HTMLElement) {
 		return sendResponse({}, Code.GuildNotFound, Message.GuildNotFound);
 	}
 
-	const json: RealmeyeGuild = { name, members: [] };
+	const json: Partial<RealmeyeGuild> = { name, description: [], members: [] };
+
+	// #region description
+	const description = container.querySelectorAll('.col-md-7 .well.description');
+	for (const lines of description) json.description = lines.childNodes.map((c) => c.rawText);
+
+	// #endregion
+
 	const table = container.querySelectorAll('.table-responsive .table.table-striped.tablesorter tbody tr');
 	for (const tr of table) {
 		const td = tr.childNodes.map((c) => c.rawText);
 		const [name, guild_rank, fame, exp, rank, chars, last_seen, server, avg_fame_per_char, avg_exp_per_char] = td;
 		const starColor = tr.querySelector('.star-container .star')?.rawAttrs;
 
-		json.members.push({
+		json.members!.push({
 			name: name!,
 			star: starColor?.slice(17).slice(0, -1) ?? 'light-blue',
 			guild_rank: guild_rank!,

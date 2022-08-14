@@ -31,7 +31,12 @@ export function handle(document: HTMLElement) {
 		return sendResponse({}, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
 	}
 
-	const json: Partial<RealmeyePlayer> = { name };
+	const json: Partial<RealmeyePlayer> = { name, description: [] };
+
+	// #region description
+	const description = container.querySelectorAll('.col-md-7 .well.description');
+	for (const lines of description) json.description = lines.childNodes.map((c) => c.rawText);
+	// #endregion
 
 	// #region summary table
 	const summaryTable = container.querySelector('.row .col-md-5 .summary');

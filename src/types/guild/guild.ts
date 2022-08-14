@@ -2,6 +2,7 @@ import type { EquipmentSlot } from '../player/player';
 
 export interface RealmeyeGuild {
 	name: string;
+	description: string[];
 	members: {
 		name: string;
 		star: string;
