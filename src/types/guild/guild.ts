@@ -56,3 +56,17 @@ export interface RealmeyeGuildTopPets {
 		owner: string;
 	}[];
 }
+
+export interface RealmeyeGuildRecentDeaths {
+	name: string;
+	deaths: {
+		class: string;
+		name: string;
+		died_on: string;
+		base_fame: number;
+		total_fame: number;
+		equipment: EquipmentSlot[];
+		stats: string;
+		killed_by: string;
+	}[];
+}
