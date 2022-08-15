@@ -70,3 +70,20 @@ export interface RealmeyeGuildRecentDeaths {
 		killed_by: string;
 	}[];
 }
+
+export interface RealmeyeGuildFormerMembers {
+	name: string;
+	former_members: {
+		name: string;
+		guild_rank: string;
+		star: string;
+		left_at: string;
+		current_guild?: string;
+		fame: number;
+		exp: number;
+		rank: number;
+		character_count: number;
+		last_seen?: string;
+		server?: string;
+	}[];
+}
