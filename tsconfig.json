@@ -15,7 +15,7 @@
 		"sourceMap": true,
 		"noEmitHelpers": true,
 		"importHelpers": true,
-		"importsNotUsedAsValues": "error",
+		// "importsNotUsedAsValues": "error",
 		"outDir": "./dist",
 
 		/* Interop constraints */
