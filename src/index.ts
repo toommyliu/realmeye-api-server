@@ -1,14 +1,21 @@
-import fastify from 'fastify';
+import Hapi from '@hapi/hapi';
 import { logger } from './util/logger.js';
 
 // #region player routes
 import getPlayerByName from './routes/players/player.js';
 // #endregion
 
-const app = fastify({ logger });
+const app = Hapi.server({
+	port: 3000,
+	host: 'localhost',
+});
 
-app.get('/api/player/:name', getPlayerByName);
+await app.start();
 
-await app.listen({ port: 3000 });
+app.route({
+	method: 'GET',
+	path: '/api/player/{name}',
+	handler: getPlayerByName,
+});
 
 export default app;

@@ -1,9 +1,10 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type Hapi from '@hapi/hapi';
 import { parse, valid } from 'node-html-parser';
 import { fetch } from '../../util/fetch.js';
+import * as Hoek from '@hapi/hoek';
 
-export default async function (req: FastifyRequest<{ Params: Params; Querystring: Querystring }>, res: FastifyReply) {
-	const { name } = req.params;
+export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseToolkit<Hapi.ReqRefDefaults>) {
+	const name = Hoek.escapeHtml(req.params.name);
 
 	// Whether we should include character data
 	const includeCharacters = req.query.include_characters === 'true';
@@ -11,8 +12,7 @@ export default async function (req: FastifyRequest<{ Params: Params; Querystring
 	const includeNav = req.query.include_nav === 'true';
 
 	if (!name) {
-		res.send({ message: 'Missing name parameter' });
-		return;
+		return h.response({ message: 'Missing name parameter' }).code(400);
 	}
 
 	const url = `https://www.realmeye.com/player/${name}`;
@@ -22,6 +22,12 @@ export default async function (req: FastifyRequest<{ Params: Params; Querystring
 
 	if (valid(resp)) {
 		const document = parse(resp);
+
+		const doesPlayerExist = !document
+			.querySelector('body > div.container > div > div > h2')
+			?.rawText?.startsWith('Sorry, but we either:');
+
+		if (!doesPlayerExist) return h.response({ message: 'Player does not exist' }).code(404);
 
 		const ret: Partial<Player> = {};
 		if (includeCharacters) ret.characters = [];
@@ -88,12 +94,12 @@ export default async function (req: FastifyRequest<{ Params: Params; Querystring
 			}
 		}
 
-		const description: [string | null, string | null, string | null] = [
-			document.querySelector('#d > div.line1.description-line')?.rawText ?? null,
-			document.querySelector('#d > div.line2.description-line')?.rawText ?? null,
-			document.querySelector('#d > div.line3.description-line')?.rawText ?? null,
-		];
-		ret.description = description;
+		const description: [string, string, string] = [] as unknown as [string, string, string];
+		for (let i = 0; i < 3; ++i) {
+			const line = document.querySelector(`#d > div.line${i + 1}.description-line`);
+			if (line) description.push(line.rawText);
+		}
+		ret.description = description.filter((d) => d !== null) as unknown as [string, string, string];
 
 		if (includeCharacters) {
 			const tbl = document.querySelectorAll(
@@ -182,10 +188,10 @@ export default async function (req: FastifyRequest<{ Params: Params; Querystring
 			}
 		}
 
-		return res.send(ret);
+		return h.response(ret).code(200);
 	}
 
-	res.send({ message: 'Hello World!' });
+	return h.response({ message: 'Invalid html returned from server' }).code(500);
 }
 
 type Querystring = {
@@ -212,7 +218,7 @@ type Player = {
 	offer_count?: number;
 	pet_count?: number;
 	characters?: Character[];
-	description: [string | null, string | null, string | null];
+	description: [string, string, string];
 };
 type Character = {
 	class_name: string;
