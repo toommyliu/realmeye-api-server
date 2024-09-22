@@ -10,6 +10,8 @@ export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.R
 	const includeCharacters = req.query.include_characters === 'true';
 	// Whether we should include data from the navigation bar (below the summary table)
 	const includeNav = req.query.include_nav === 'true';
+	// Whether to force a refresh of the data
+	const force = req.query.force === 'true';
 
 	if (!name) {
 		return h.response({ message: 'Missing name parameter' }).code(400);
@@ -110,18 +112,24 @@ export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.R
 				const charRow: string[] = tbl[i]!.childNodes.map((c) => c.rawText);
 				const skin = tbl[i]?.querySelector('.character')?.rawAttributes;
 
-				// TODO: some players dont have pets equipped
-				// charRow.splice(0, 2);
+				let startIndex = 0;
+
+				for (let j = 0; j < charRow.length; j++) {
+					if (charRow[j] === '') {
+						console.log('empty element found at index ' + j);
+						startIndex = j + 1; // If the first element is empty, start from the next index
+					}
+				}
 
 				console.log(charRow);
 
-				char.class_name = charRow[0]!;
-				char.level = Number.parseInt(charRow[1]!, 10);
-				char.fame = Number.parseInt(charRow[2]!, 10);
-				char.rank = Number.parseInt(charRow[3]!, 10);
-				char.stats = charRow[5]!;
-				char.last_seen = charRow[6]!;
-				if (charRow[7] !== '') char.server = charRow[7]!;
+				char.class_name = charRow[startIndex]!;
+				char.level = Number.parseInt(charRow[startIndex + 1]!, 10);
+				char.fame = Number.parseInt(charRow[startIndex + 2]!, 10);
+				char.rank = Number.parseInt(charRow[startIndex + 3]!, 10);
+				char.stats = charRow[startIndex + 5]!;
+				char.last_seen = charRow[startIndex + 6]!;
+				if (charRow[startIndex + 7] !== '') char.server = charRow[startIndex + 7]!;
 
 				// char.equipment = [];
 				// // @ts-expect-error
@@ -193,14 +201,6 @@ export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.R
 
 	return h.response({ message: 'Invalid html returned from server' }).code(500);
 }
-
-type Querystring = {
-	include_characters: string;
-	include_nav: string;
-};
-type Params = {
-	name: string;
-};
 
 type Player = {
 	name: string;
