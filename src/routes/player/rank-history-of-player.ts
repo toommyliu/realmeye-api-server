@@ -39,9 +39,14 @@ export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.R
 
 		for (const row of tbody.childNodes) {
 			const [rank, achieved_str] = row.childNodes.map((c) => c.rawText);
-			// @ts-expect-error -> star star-light-blue
-			const star_clr = row.childNodes[0]?.childNodes[0]?.childNodes[1]?.rawAttrs;
-			console.log(star_clr);
+			// prettier-ignore
+			const star_clr =
+				row /* tr */
+                    .childNodes[0] /* td */
+                    ?.childNodes[0] /* div (star-container) */
+                    ?.childNodes[1] /* div (star star-*) */
+                    // @ts-expect-error
+					?.rawAttrs;
 
 			// 2024-09-26 17:31:32 in ~ 11 days 16 hours 43 minutes
 			const split = achieved_str!.split(' in ~ ');
