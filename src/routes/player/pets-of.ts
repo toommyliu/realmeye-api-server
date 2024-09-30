@@ -12,7 +12,6 @@ export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.R
 
 	const force = req.query.force === 'true';
 
-	// https://www.realmeye.com/pets-of/qua
 	const url = `https://www.realmeye.com/pets-of/${name}`;
 	const resp = await fetch(url)
 		.then((r) => r.body)
@@ -21,11 +20,11 @@ export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.R
 	if (valid(resp)) {
 		const document = parse(resp);
 
-		const doesPlayerExist = !document
+		const playerFound = !document
 			.querySelector('body > div.container > div > div > h2')
 			?.rawText?.startsWith('Sorry, but we either:');
 
-		if (!doesPlayerExist) return h.response({ message: 'Player does not exist' }).code(404);
+		if (!playerFound) return h.response({ message: 'Player not found' }).code(404);
 
 		const ret: Partial<PlayerPetYard> = [];
 
