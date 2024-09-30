@@ -39,6 +39,11 @@ async function handler(req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseT
 			document.querySelector('body > div.container > div > div > h3')?.rawText === 'Name history is not available';
 		if (isPrivate) return h.response({ message: 'Name history is not available' }).code(403);
 
+		const hasNoNameHistory =
+			document.querySelector('body > div.container > div > div > p:nth-child(8)')?.rawText ===
+			'No name changes detected.';
+		if (hasNoNameHistory) return h.response({ message: 'No name changes detected' }).code(404);
+
 		const tbl = document.querySelector('#e');
 		const tbody = tbl?.querySelector('tbody');
 		if (!tbl || !tbody) return h.response({ message: 'Invalid html returned from server' }).code(500);
@@ -50,17 +55,17 @@ async function handler(req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseT
 				name: name!,
 			};
 
-            // The player's first name doesn't have a "from" date
-            if (from != '') {
-                ret_.from = from;
-            }
+			// The player's first name doesn't have a "from" date
+			if (from != '') {
+				ret_.from = from;
+			}
 
-            // The player's latest name doesn't have an "up to" date as it's their current name
-            if (to != '') {
-                ret_.to = to;
-            }
+			// The player's latest name doesn't have an "up to" date as it's their current name
+			if (to != '') {
+				ret_.to = to;
+			}
 
-            ret.push(ret_);
+			ret.push(ret_);
 		}
 
 		return h.response(ret).code(200);
