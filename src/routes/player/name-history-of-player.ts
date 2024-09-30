@@ -36,8 +36,32 @@ async function handler(req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseT
 		const ret: PlayerNameHistory[] = [];
 
 		const isPrivate =
-			document.querySelector('body > div.container > div > div > h3')?.rawText === 'Rank history is not available';
-		if (isPrivate) return h.response({ message: 'Rank history is not available' }).code(403);
+			document.querySelector('body > div.container > div > div > h3')?.rawText === 'Name history is not available';
+		if (isPrivate) return h.response({ message: 'Name history is not available' }).code(403);
+
+		const tbl = document.querySelector('#e');
+		const tbody = tbl?.querySelector('tbody');
+		if (!tbl || !tbody) return h.response({ message: 'Invalid html returned from server' }).code(500);
+
+		for (const row of tbody.childNodes) {
+			const [name, from, to] = row.childNodes.map((c) => c.rawText);
+
+			const ret_: PlayerNameHistory = {
+				name: name!,
+			};
+
+            // The player's first name doesn't have a "from" date
+            if (from != '') {
+                ret_.from = from;
+            }
+
+            // The player's latest name doesn't have an "up to" date as it's their current name
+            if (to != '') {
+                ret_.to = to;
+            }
+
+            ret.push(ret_);
+		}
 
 		return h.response(ret).code(200);
 	}
