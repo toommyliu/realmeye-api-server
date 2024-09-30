@@ -1,35 +1,31 @@
 import Hapi from '@hapi/hapi';
 import { logger } from './util/logger.js';
-
-// #region player routes
-import getPlayerByName from './routes/player/player.js';
-import getPetsOf from './routes/player/pets-of.js';
-import getRankHistoryOf from './routes/player/rank-history-of-player.js';
-// #endregion
+import fs from 'node:fs/promises';
 
 const app = Hapi.server({
 	port: 3000,
 	host: 'localhost',
 });
 
-await app.start();
-logger.info(`API listening on ${app.info.uri}`);
-app.route({
-	method: 'GET',
-	path: '/api/player/{name}',
-	handler: getPlayerByName,
-});
+async function startServer() {
+	await app.start();
+	logger.info(`API listening on ${app.info.uri}`);
 
-app.route({
-	method: 'GET',
-	path: '/api/player/{name}/pets-of',
-	handler: getPetsOf,
-});
+	for await (const route of await fs.readdir('./src/routes/player', { withFileTypes: true })) {
+		if (route.isFile()) {
+			const routeName = route.name.replace('.ts', '');
 
-app.route({
-	method: 'GET',
-	path: '/api/player/{name}/rank-history-of',
-	handler: getRankHistoryOf,
+			const mod = await import(`./routes/player/${routeName}.js`);
+			if (mod && mod?.default && typeof mod.default === 'object') {
+				app.route(mod.default);
+			}
+		}
+	}
+}
+
+await startServer().catch(() => {
+	logger.error('Failed to start server');
+	process.exit(1);
 });
 
 export default app;

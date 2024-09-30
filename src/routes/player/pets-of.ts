@@ -3,7 +3,13 @@ import { parse, valid } from 'node-html-parser';
 import { fetch } from '../../util/fetch.js';
 import * as Hoek from '@hapi/hoek';
 
-export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseToolkit<Hapi.ReqRefDefaults>) {
+export default {
+	method: 'GET',
+	path: '/api/player/{name}/pets-of',
+	handler,
+} satisfies Hapi.ServerRoute;
+
+async function handler(req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseToolkit<Hapi.ReqRefDefaults>) {
 	const name = Hoek.escapeHtml(req.params.name);
 
 	if (!name) {

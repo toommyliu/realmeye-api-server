@@ -3,7 +3,13 @@ import { parse, valid } from 'node-html-parser';
 import { fetch } from '../../util/fetch.js';
 import * as Hoek from '@hapi/hoek';
 
-export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseToolkit<Hapi.ReqRefDefaults>) {
+export default {
+	method: 'GET',
+	path: '/api/player/{name}/rank-history-of',
+	handler,
+} satisfies Hapi.ServerRoute;
+
+async function handler(req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseToolkit<Hapi.ReqRefDefaults>) {
 	const name = Hoek.escapeHtml(req.params.name);
 
 	// Whether to force a refresh of the data
@@ -41,7 +47,7 @@ export default async function (req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.R
 			const [rank, achieved_str] = row.childNodes.map((c) => c.rawText);
 			// prettier-ignore
 			const star_clr =
-				row /* tr */
+				    row /* tr */
                     .childNodes[0] /* td */
                     ?.childNodes[0] /* div (star-container) */
                     ?.childNodes[1] /* div (star star-*) */
