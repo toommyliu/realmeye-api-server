@@ -17,6 +17,7 @@ async function startServer() {
 
 			const mod = await import(`./routes/player/${routeName}.js`);
 			if (mod && mod?.default && typeof mod.default === 'object') {
+				logger.info(`Registering route: ${routeName}`)
 				app.route(mod.default);
 			}
 		}
