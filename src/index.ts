@@ -23,8 +23,9 @@ async function startServer() {
 	}
 }
 
-await startServer().catch(() => {
-	logger.error('Failed to start server');
+await startServer().catch((err) => {
+	const error = err as Error;
+	logger.error(error, 'Failed to start server');
 	process.exit(1);
 });
 
