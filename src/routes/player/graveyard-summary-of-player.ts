@@ -1,113 +1,155 @@
-import type { HTMLElement } from 'node-html-parser';
-import { Code, Message } from '../../constants.js';
-import type { MaxedStatsByClass, RealmeyePlayerGraveyardSummary } from '../../types/index.js';
-import { extractContainer, extractName } from '../../util/extract.js';
-import { sendResponse } from '../../util/sendResponse.js';
+import type Hapi from '@hapi/hapi';
+import { parse, valid } from 'node-html-parser';
+import { fetch } from '../../util/fetch.js';
+import * as Hoek from '@hapi/hoek';
 
-export const path = '/graveyard-summary-of-player/:name';
-export function handle(document: HTMLElement) {
-	const container = extractContainer(document)!;
-	const name = extractName(container);
+export default {
+	method: 'GET',
+	path: '/api/player/{name}/graveyard-summary',
+	handler,
+} satisfies Hapi.ServerRoute;
 
-	const h2 = container.querySelector('h2');
-	if (!name || h2?.rawText === 'Sorry, but we either:') {
-		return sendResponse({}, Code.PlayerNotFound, Message.PlayerNotFound);
+async function handler(req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseToolkit<Hapi.ReqRefDefaults>) {
+	const name = Hoek.escapeHtml(req.params.name);
+
+	if (!name) {
+		return h.response({ message: 'Missing name parameter' }).code(400);
 	}
 
-	const h3 = container.querySelector('h3');
-	if (h3?.rawText === 'No data available yet.') {
-		return sendResponse({ name }, Code.PlayerDataMissing, Message.PlayerDataMissing);
-	} else if (h3?.rawText.startsWith('The graveyard of')) {
-		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+	const force = req.query.force === 'true';
+
+	const includeOtherAchivements = req.query.include_other_achievements === 'true';
+	const includeStatsMaxedByClass = req.query.include_stats_maxed_by_class === 'true';
+
+	const url = `https://www.realmeye.com/graveyard-summary-of-player/${name}`;
+	const resp = await fetch(url)
+		.then((r) => r.body)
+		.then((r) => r.text());
+
+	if (valid(resp)) {
+		const document = parse(resp);
+
+		const playerFound = !document
+			.querySelector('body > div.container > div > div > h2')
+			?.rawText?.startsWith('Sorry, but we either:');
+
+		if (!playerFound) return h.response({ message: 'Player not found' }).code(404);
+
+		const h3 = document.querySelector('body > div.container > div > div > h3')?.rawText;
+		if (h3 === 'No data available yet.') return h.response({ message: 'No data available yet' }).code(403);
+		else if (h3?.startsWith('The graveyard of '))
+			return h.response({ message: 'Graveyard summary not available' }).code(403);
+
+		const ret: Partial<PlayerGraveyardSummary> = {};
+
+		{
+			ret.main_achievements = {} as PlayerMainAchievements;
+
+			const tbl = document.querySelector('#e');
+
+			if (!tbl) return h.response({ message: 'Invalid html returned from server' }).code(500);
+
+			// first node is the header?
+			for (const row of tbl.childNodes.slice(1)) {
+				const [, dungeonName, total, max, average, min] = row.childNodes.map((c) => c.rawText);
+
+				const ret_: Partial<PlayerMainAchievementRow> = {
+					total: Number.parseInt(total!, 10),
+					max: Number.parseInt(max!, 10),
+					average: Number.parseInt(average!, 10),
+					min: Number.parseInt(min!, 10),
+				};
+
+				ret_.name = (dungeonName!
+					.replace(/[0-9]/g, '') // remove numbers (remarks)
+					.replace(String.fromCharCode(160), ' ') // remove &nbsp;
+					.replace('&apos;s', '') // remove apostrophe
+					.split(' ')
+					.map((s) => s.toLowerCase())
+					.join('_') as keyof PlayerMainAchievements)!;
+
+				// @ts-expect-error
+				ret.main_achievements[ret_.name] = ret_ as PlayerMainAchievementRow;
+			}
+		}
+
+		if (includeOtherAchivements) {
+			ret.other_achievements = {};
+		}
+
+		if (includeStatsMaxedByClass) {
+			ret.stats_maxed_by_class = {};
+		}
+
+		return h.response(ret).code(200);
 	}
 
-	const json: RealmeyePlayerGraveyardSummary = {
-		name,
-		main_achievements: [],
-		maxed_stats_by_class: [],
-		other_achievements: [],
-	};
-
-	const mainAchievementRows = container.querySelector('.table-responsive .table.table-striped.main-achievements')!;
-	for (let i = 1; i < mainAchievementRows.childNodes.length; i++) {
-		const [, achievement, total, max, average, min] = mainAchievementRows.childNodes[i]!.childNodes.map(
-			(c) => c.rawText
-		)!;
-		json.main_achievements.push({
-			achievement: achievement!.replace('&apos;s', "'s").replace(/[0-9]/g, ''),
-			total: total ? parseInt(total, 10) : 0,
-			max: max ? parseInt(max, 10) : 0,
-			average: average ? parseInt(average, 10) : 0,
-			min: min ? parseInt(min, 10) : 0,
-		});
-	}
-
-	const otherAchievementsRows = container.querySelector('.table-responsive .table.table-striped.other-achievements')!;
-	for (let i = 1; i < otherAchievementsRows.childNodes.length; i++) {
-		const [achievement, total, max, average, min] = otherAchievementsRows.childNodes[i]!.childNodes.map(
-			(c) => c.rawText
-		)!;
-
-		json.other_achievements.push({
-			achievement: achievement!.replace('&apos;s', "'s").replace(/[0-9]/g, ''),
-			total: total ? parseInt(total, 10) : 0,
-			max: max ? parseInt(max, 10) : 0,
-			average: average ? parseInt(average, 10) : 0,
-			min: min ? parseInt(min, 10) : 0,
-		});
-	}
-
-	const classAchievementRows = container.querySelectorAll(
-		'.table-responsive .table.table-striped.maxed-stats-by-class tbody tr'
-	)!;
-
-	for (const row of classAchievementRows) {
-		const classRow: string[] = row.childNodes.map((r) => r.rawText);
-		const class_achievement: MaxedStatsByClass = {
-			class: classRow[0]!,
-			stats: [
-				{
-					stat_maxed: '0/8',
-					count: classRow[1] ? parseInt(classRow[1], 10) : 0,
-				},
-				{
-					stat_maxed: '1/8',
-					count: classRow[2] ? parseInt(classRow[2], 10) : 0,
-				},
-				{
-					stat_maxed: '2/8',
-					count: classRow[3] ? parseInt(classRow[3], 10) : 0,
-				},
-				{
-					stat_maxed: '3/8',
-					count: classRow[4] ? parseInt(classRow[4], 10) : 0,
-				},
-				{
-					stat_maxed: '4/8',
-					count: classRow[5] ? parseInt(classRow[5], 10) : 0,
-				},
-				{
-					stat_maxed: '5/8',
-					count: classRow[6] ? parseInt(classRow[6], 10) : 0,
-				},
-				{
-					stat_maxed: '6/8',
-					count: classRow[7] ? parseInt(classRow[7], 10) : 0,
-				},
-				{
-					stat_maxed: '7/8',
-					count: classRow[8] ? parseInt(classRow[8], 10) : 0,
-				},
-				{
-					stat_maxed: '8/8',
-					count: classRow[9] ? parseInt(classRow[9], 10) : 0,
-				},
-			],
-			total: 0,
-		};
-		class_achievement.total = class_achievement.stats.reduce((a, b) => b.count + a, 0);
-		json.maxed_stats_by_class.push(class_achievement);
-	}
-
-	return sendResponse(json);
+	return h.response({ message: 'Invalid html returned from server' }).code(500);
 }
+
+type PlayerGraveyardSummary = {
+	main_achievements: PlayerMainAchievements;
+	other_achievements: PlayerOtherAchievements;
+	stats_maxed_by_class: PlayerMaxedByClassStats;
+};
+
+type PlayerMainAchievements = {
+	base_fame: PlayerMainAchievementRow;
+	total_fame: PlayerMainAchievementRow;
+	oryx_kills: PlayerMainAchievementRow;
+	god_kills: PlayerMainAchievementRow;
+	monster_kills: PlayerMainAchievementRow;
+	quests_completed: PlayerMainAchievementRow;
+	tiles_uncovered: PlayerMainAchievementRow;
+	lost_halls_completed: PlayerMainAchievementRow;
+	voids_completed: PlayerMainAchievementRow;
+	cultist_hideouts_completed: PlayerMainAchievementRow;
+	nests_completed: PlayerMainAchievementRow;
+	shatters_completed: PlayerMainAchievementRow;
+	tombs_completed: PlayerMainAchievementRow;
+	ocean_trenches_completed: PlayerMainAchievementRow;
+	parasite_chambers_completed: PlayerMainAchievementRow;
+	lairs_of_shaitan_completed: PlayerMainAchievementRow;
+	puppet_masters_encores_completed: PlayerMainAchievementRow;
+	cnidarian_reefs_completed: PlayerMainAchievementRow;
+	secluded_thickets_completed: PlayerMainAchievementRow;
+	cursed_libraries_completed: PlayerMainAchievementRow;
+	crystal_caverns_completed: PlayerMainAchievementRow;
+	'lairs_of_draconis_(hard_mode)_completed': PlayerMainAchievementRow;
+	'lairs_of_draconis_(easy_mode)_completed': PlayerMainAchievementRow;
+	mountain_temples_completed: PlayerMainAchievementRow;
+	crawling_depths_completed: PlayerMainAchievementRow;
+	woodland_labyrinths_completed: PlayerMainAchievementRow;
+	deadwater_docks_completed: PlayerMainAchievementRow;
+	ice_caves_completed: PlayerMainAchievementRow;
+	bella_donnas_completed: PlayerMainAchievementRow;
+	davy_jones_lockers_completed: PlayerMainAchievementRow;
+	battle_for_the_nexuses_completed: PlayerMainAchievementRow;
+	candyland_hunting_grounds_completed: PlayerMainAchievementRow;
+	puppet_master_theatres_completed: PlayerMainAchievementRow;
+	toxic_sewers_completed: PlayerMainAchievementRow;
+	haunted_cemeteries_completed: PlayerMainAchievementRow;
+	mad_labs_completed: PlayerMainAchievementRow;
+	abysses_of_demons_completed: PlayerMainAchievementRow;
+	manors_of_the_immortals_completed: PlayerMainAchievementRow;
+	ancient_ruins_completed: PlayerMainAchievementRow;
+	undead_lairs_completed: PlayerMainAchievementRow;
+	sprite_worlds_completed: PlayerMainAchievementRow;
+	snake_pits_completed: PlayerMainAchievementRow;
+	caves_of_a_thousand_treasures_completed: PlayerMainAchievementRow;
+	magic_woods_completed: PlayerMainAchievementRow;
+	hives_completed: PlayerMainAchievementRow;
+	spider_dens_completed: PlayerMainAchievementRow;
+	forbidden_jungles_completed: PlayerMainAchievementRow;
+	forest_mazes_completed: PlayerMainAchievementRow;
+	pirate_caves_completed: PlayerMainAchievementRow;
+};
+type PlayerMainAchievementRow = {
+	name: string;
+	total: number;
+	max: number;
+	average: number;
+	min: number;
+};
+type PlayerOtherAchievements = {};
+type PlayerMaxedByClassStats = {};

@@ -1,61 +1,96 @@
-import type { HTMLElement } from 'node-html-parser';
-import { Code, Message } from '../../constants.js';
-import type { RealmeyePlayerPetYard } from '../../types/index.js';
-import { extractContainer, extractName } from '../../util/extract.js';
-import { sendResponse } from '../../util/sendResponse.js';
+import type Hapi from '@hapi/hapi';
+import { parse, valid } from 'node-html-parser';
+import { fetch } from '../../util/fetch.js';
+import * as Hoek from '@hapi/hoek';
 
-export const path = '/pets-of/:name';
-export function handle(document: HTMLElement) {
-	const container = extractContainer(document)!;
-	const name = extractName(container);
+export default {
+	method: 'GET',
+	path: '/api/player/{name}/pets-of',
+	handler,
+} satisfies Hapi.ServerRoute;
 
-	const h2 = container.querySelector('h2');
-	if (!name || h2?.rawText === 'Sorry, but we either:') {
-		return sendResponse({}, Code.PlayerNotFound, Message.PlayerNotFound);
+async function handler(req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseToolkit<Hapi.ReqRefDefaults>) {
+	const name = Hoek.escapeHtml(req.params.name);
+
+	if (!name) {
+		return h.response({ message: 'Missing name parameter' }).code(400);
 	}
 
-	const h3 = container.getElementsByTagName('h3');
-	if (h3[h3.length - 1]?.rawText === 'Pets are hidden.') {
-		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+	const force = req.query.force === 'true';
+
+	const url = `https://www.realmeye.com/pets-of/${name}`;
+	const resp = await fetch(url)
+		.then((r) => r.body)
+		.then((r) => r.text());
+
+	if (valid(resp)) {
+		const document = parse(resp);
+
+		const playerFound = !document
+			.querySelector('body > div.container > div > div > h2')
+			?.rawText?.startsWith('Sorry, but we either:');
+
+		if (!playerFound) return h.response({ message: 'Player not found' }).code(404);
+
+		const ret: Partial<PlayerPetYard> = [];
+
+		const tbl = document.querySelector('#e');
+		const rows = tbl?.querySelectorAll('tbody tr');
+
+		if (!tbl || !rows) return h.response({ message: 'Invalid html returned from server' }).code(500);
+
+		for (const row of rows) {
+			const [, name, rarity, family, place, ability_1, level_1, ability_2, level_2, ability_3, level_3, max_level] =
+				row.childNodes.map((c) => c.rawText);
+
+			const pet: Partial<Pet> = {
+				name,
+				rarity,
+				family,
+				place: Number.parseInt(place!, 10),
+				abilities: [
+					{
+						ability: ability_1!,
+						unlocked: true,
+						level: level_1 ? Number.parseInt(level_1, 10) : 0,
+						maxed: level_1 === max_level,
+					},
+					{
+						ability: ability_2!,
+						unlocked: Number.parseInt(level_2!, 10) > 0,
+						level: Number.parseInt(level_2!, 10),
+						maxed: Number.parseInt(level_2!, 10) === Number.parseInt(max_level!, 10),
+					},
+					{
+						ability: ability_3!,
+						unlocked: Number.parseInt(level_3!, 10) > 0,
+						level: Number.parseInt(level_3!, 10),
+						maxed: Number.parseInt(level_3!, 10) === Number.parseInt(max_level!, 10),
+					},
+				],
+				max_level: Number.parseInt(max_level!, 10),
+			};
+
+			ret.push(pet as Pet);
+		}
+
+		return h.response(ret).code(200);
 	}
 
-	const json: RealmeyePlayerPetYard = { name, pets: [] };
-
-	const rows = container.querySelectorAll('.table-responsive .table.table-striped.tablesorter tbody tr')!;
-	for (const row of rows) {
-		const [, name, rarity, family, place, ability_1, level_1, ability_2, level_2, ability_3, level_3, max_level] =
-			row.childNodes.map((c) => c.rawText);
-		const abbrName = row.getElementsByTagName('abbr')[0]?.getAttribute('title');
-
-		const pet: RealmeyePlayerPetYard['pets'][0] = {
-			name: abbrName ?? name!,
-			rarity: rarity!,
-			family: family!,
-			place: place ? parseInt(place, 10) : 0,
-			abilities: [
-				{
-					ability: ability_1!,
-					unlocked: true,
-					level: level_1 ? parseInt(level_1, 10) : 0,
-					maxed: level_1 === max_level,
-				},
-				{
-					ability: ability_2!,
-					unlocked: parseInt(level_2!, 10) > 0,
-					level: parseInt(level_2!, 10),
-					maxed: parseInt(level_2!, 10) === parseInt(max_level!, 10),
-				},
-				{
-					ability: ability_3!,
-					unlocked: parseInt(level_3!, 10) > 0,
-					level: parseInt(level_3!, 10),
-					maxed: parseInt(level_3!, 10) === parseInt(max_level!, 10),
-				},
-			],
-			max_level: max_level ? parseInt(max_level, 10) : 0,
-		};
-		json.pets.push(pet);
-	}
-
-	return sendResponse(json);
+	return h.response({ message: 'Invalid html returned from server' }).code(500);
 }
+
+type PlayerPetYard = Pet[];
+type Pet = {
+	name: string;
+	rarity: string;
+	family: string;
+	place: number;
+	abilities: {
+		ability: string;
+		level: number;
+		maxed: boolean;
+		unlocked: boolean;
+	}[];
+	max_level: number;
+};

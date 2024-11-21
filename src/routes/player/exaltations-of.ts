@@ -1,60 +1,111 @@
-import type { HTMLElement } from 'node-html-parser';
-import { Code, Message } from '../../constants.js';
-import type { ClassExaltation } from '../../types/index.js';
-import { extractContainer, extractName } from '../../util/extract.js';
-import { sendResponse } from '../../util/sendResponse.js';
+import type Hapi from '@hapi/hapi';
+import { parse, valid } from 'node-html-parser';
+import { fetch } from '../../util/fetch.js';
+import * as Hoek from '@hapi/hoek';
 
-export const path = '/exaltations-of/:name';
-export function handle(document: HTMLElement) {
-	const container = extractContainer(document)!;
-	const name = extractName(container);
+export default {
+	method: 'GET',
+	path: '/api/player/{name}/exaltations-of',
+	handler,
+} satisfies Hapi.ServerRoute;
 
-	const h2 = container.querySelector('h2');
-	if (!name || h2?.rawText === 'Sorry, but we either:') {
-		return sendResponse({}, Code.PlayerNotFound, Message.PlayerNotFound);
+async function handler(req: Hapi.Request<Hapi.ReqRefDefaults>, h: Hapi.ResponseToolkit<Hapi.ReqRefDefaults>) {
+	const name = Hoek.escapeHtml(req.params.name);
+
+	// Whether to force a refresh of the data
+	const force = req.query.force === 'true';
+
+	if (!name) {
+		return h.response({ message: 'Missing name parameter' }).code(400);
 	}
 
-	const h3 = container.querySelector('h3');
-	if (h3?.rawText === 'No exaltations') {
-		return sendResponse({ name }, Code.PlayerDataMissing, Message.PlayerDataMissing);
-	} else if (h3?.rawText === 'Exaltations are hidden') {
-		return sendResponse({ name }, Code.PlayerDataUnavailable, Message.PlayerDataUnavailable);
+	const url = `https://www.realmeye.com/exaltations-of/${name}`;
+	const resp = await fetch(url)
+		.then((r) => r.body)
+		.then((r) => r.text());
+
+	if (valid(resp)) {
+		const document = parse(resp);
+
+		const playerFound = !document
+			.querySelector('body > div.container > div > div > h2')
+			?.rawText?.startsWith('Sorry, but we either:');
+
+		if (!playerFound) return h.response({ message: 'Player not found' }).code(404);
+
+		const ret: Partial<PlayerExaltation> = { classes: [] };
+
+		const isPrivate =
+			document.querySelector('body > div.container > div > div > h3')?.rawText === 'Exaltations are hidden';
+		if (isPrivate) return h.response({ message: 'Exaltations are not available' }).code(403);
+
+		const hasNoExaltations =
+			document.querySelector('body > div.container > div > div > h3')?.rawText === 'No exaltations';
+		if (hasNoExaltations) return h.response({ message: 'No exaltations detected' }).code(404);
+
+		{
+			const exaltationsStr = document.querySelector('body > div.container > div > div > h3')?.rawText;
+			// Exaltations: 720 / 720&nbsp;100.0%
+			const split = exaltationsStr!.substring(13).split(' / ');
+			const current = Number.parseInt(split[0]!, 10);
+			const split_ = split[split.length - 1]!.replace(String.fromCharCode(160) /* &nbsp */, '').split('%');
+			const remaining = Number.parseInt(split_[0]!, 10);
+
+			ret.current = current; // 720
+			ret.remaining = remaining; // 720
+		}
+
+		const tbl = document.querySelector('#e');
+		const tbody = tbl?.querySelector('tbody');
+		if (!tbl || !tbody) return h.response({ message: 'Invalid html returned from server' }).code(500);
+
+		for (const row of tbody.childNodes) {
+			const [, name, total, hp, mp, attack, defense, speed, dexterity, vitality, wisdom] = row.childNodes.map(
+				(c) => c.rawText,
+			);
+
+			const ret_: Partial<ClassExaltation> = {
+				class_name: name ?? '',
+				total: total ? Number.parseInt(total, 10) : 0,
+				health: hp ? Number.parseInt(hp, 10) / 5 : 0,
+				mana: mp ? Number.parseInt(mp, 10) / 5 : 0,
+				attack: attack ? Number.parseInt(attack, 10) : 0,
+				defense: defense ? Number.parseInt(defense, 10) : 0,
+				speed: speed ? Number.parseInt(speed, 10) : 0,
+				dexterity: dexterity ? Number.parseInt(dexterity, 10) : 0,
+				vitality: vitality ? Number.parseInt(vitality, 10) : 0,
+				wisdom: wisdom ? Number.parseInt(wisdom, 10) : 0,
+			};
+
+			// this hasn't changed for some time, should be fine to hardcode it
+			if (ret_.total === 40) {
+				ret_.is_maxed = true;
+			}
+
+			ret.classes!.push(ret_ as ClassExaltation);
+		}
+
+		return h.response(ret).code(200);
 	}
 
-	const split = h3!.rawText.substring(13).split(' / ');
-	const current = parseInt(split[0]!, 10);
-	const split_ = split[split.length - 1]!.replace(String.fromCharCode(160), ' ').split(' ');
-	const remaining = parseInt(split_[0]!, 10);
-	const percentage = Math.floor((current / remaining) * 100).toFixed(1);
-
-	const exaltations: ClassExaltation[] = [];
-	const rows = container.querySelectorAll('.table-responsive .table.table-striped.tablesorter tbody tr');
-
-	for (const row of rows) {
-		const [, name, total, hp, mp, attack, defense, speed, dexterity, vitality, wisdom] = row.childNodes.map(
-			(c) => c.rawText
-		);
-
-		exaltations.push({
-			class: name ?? '',
-			total: total ? parseInt(total, 10) : 0,
-			health: hp ? parseInt(hp, 10) / 5 : 0,
-			mana: mp ? parseInt(mp, 10) / 5 : 0,
-			attack: attack ? parseInt(attack, 10) : 0,
-			defense: defense ? parseInt(defense, 10) : 0,
-			speed: speed ? parseInt(speed, 10) : 0,
-			dexterity: dexterity ? parseInt(dexterity, 10) : 0,
-			vitality: vitality ? parseInt(vitality, 10) : 0,
-			wisdom: wisdom ? parseInt(wisdom, 10) : 0,
-		});
-	}
-
-	const json = {
-		name,
-		current_exaltations: current,
-		remaining_exaltations: remaining,
-		percentage,
-		exaltations,
-	};
-	return sendResponse(json);
+	return h.response({ message: 'Invalid html returned from server' }).code(500);
 }
+
+type PlayerExaltation = {
+	current: number;
+	remaining: number;
+	classes: ClassExaltation[];
+};
+type ClassExaltation = {
+	class_name: string;
+	total: number;
+	health: number;
+	mana: number;
+	attack: number;
+	defense: number;
+	speed: number;
+	dexterity: number;
+	vitality: number;
+	wisdom: number;
+	is_maxed: boolean;
+};
